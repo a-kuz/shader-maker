@@ -1,0 +1,10 @@
+{
+ "sqltools.connections": [
+  {
+   "previewLimit": 50,
+   "driver": "SQLite",
+   "name": "1",
+   "database": "${workspaceFolder:shader-maker}/data/shader-history.db"
+  }
+ ]
+}
