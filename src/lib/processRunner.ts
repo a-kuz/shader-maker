@@ -32,7 +32,7 @@ export class ProcessRunner {
       maxIterations: request.config?.maxIterations || 3,
       targetScore: request.config?.targetScore || 80,
       autoMode: request.config?.autoMode !== false,
-      serverCapture: request.config?.serverCapture || false
+      serverCapture: true  // Always use server capture by default
     };
     
     // Create process in DB
@@ -64,20 +64,15 @@ export class ProcessRunner {
       await ProcessRunner.executeGenerationStep(processId, process.prompt);
       
       if (!process.config.autoMode) {
-        // Wait for manual screenshot submission - capture step already created in generation
+        // For manual mode, wait for user input but prefer server capture
+        console.log('📝 Manual mode: waiting for user to trigger capture or use server capture');
         ProcessRunner.updateStatus(processId, 'capturing', 'capture');
         return;
       }
       
-      // Step 2: Capture screenshots
-      if (process.config.serverCapture) {
-        // Use server-side capture
-        await ProcessRunner.executeServerCapture(processId);
-      } else {
-        // For now, we'll simulate the full auto process
-        // In a real implementation, this would wait for screenshots from frontend
-        await ProcessRunner.simulateAutoProcess(processId);
-      }
+      // Step 2: Always use server-side capture for auto mode
+      console.log('🖥️ Auto mode: using server-side capture');
+      await ProcessRunner.executeServerCapture(processId);
       
     } catch (error) {
       console.error(`❌ Process execution failed: ${processId}`, error);
@@ -117,11 +112,12 @@ export class ProcessRunner {
         duration
       });
       
-      // Don't create capture step yet - wait for frontend to confirm shader compiles
+      // For auto mode, generation is complete and we'll proceed to server capture
+      // For manual mode, user can trigger server capture or wait for client capture
       ProcessRunner.addUpdate(processId, {
         status: 'capturing',
         currentStep: 'capture',
-        stepProgress: { message: 'Shader generated successfully. Waiting for compilation check...', progress: 100 }
+        stepProgress: { message: 'Shader generated successfully. Ready for capture...', progress: 100 }
       });
       
       return code;
@@ -498,8 +494,14 @@ export class ProcessRunner {
           compilationError.infoLog
         );
         
-        // After fixing, wait for frontend to create capture step after compilation check
-        ProcessRunner.updateStatus(processId, 'capturing', 'capture');
+        // After fixing, continue with server capture for auto mode
+        if (process.config.autoMode) {
+          console.log('🖥️ Auto mode: continuing with server capture after fix');
+          await ProcessRunner.executeServerCapture(processId);
+        } else {
+          // For manual mode, wait for user to trigger capture
+          ProcessRunner.updateStatus(processId, 'capturing', 'capture');
+        }
         
       } catch (error) {
         ProcessRunner.updateStatus(processId, 'failed', undefined, undefined, error.message);
@@ -562,8 +564,14 @@ export class ProcessRunner {
       screenshots
     );
     
-    // Wait for frontend to create capture step after compilation check
-    ProcessRunner.updateStatus(processId, 'capturing', 'capture');
+    // Continue with server capture for the improved code
+    if (process.config.autoMode) {
+      console.log('🖥️ Auto mode: continuing with server capture after improvement');
+      await ProcessRunner.executeServerCapture(processId);
+    } else {
+      // For manual mode, wait for user to trigger capture
+      ProcessRunner.updateStatus(processId, 'capturing', 'capture');
+    }
   }
   
   static completeProcess(processId: string, finalCode: string, finalScore: number, totalIterations: number): void {
@@ -640,28 +648,7 @@ export class ProcessRunner {
     addProcessUpdate({ ...update, processId });
   }
   
-  // Simulation method for testing (remove in production)
-  private static async simulateAutoProcess(processId: string): Promise<void> {
-    // This simulates the auto process without real screenshots
-    // In production, this would wait for real frontend screenshot submissions
-    
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate capture time
-    
-    const fakeScreenshots = ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='];
-    
-    // Create a fake capture step
-    const captureStepId = uuidv4();
-    createProcessStep({
-      id: captureStepId,
-      processId,
-      type: 'capture',
-      status: 'completed',
-      output: { screenshots: fakeScreenshots }
-    });
-    
-    // Continue with the process
-    await ProcessRunner.submitScreenshots(processId, captureStepId, fakeScreenshots);
-  }
+
 }
 
 export default ProcessRunner; 

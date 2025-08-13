@@ -91,7 +91,7 @@ An AI-powered shader generator that creates, evaluates, and improves GLSL shader
 
 ## How It Works
 
-1. **Shader Generation:** OpenAI GPT-4.1 generates GLSL code from your text prompt
+1. **Shader Generation:** OpenAI o3 generates GLSL code from your text prompt
 2. **Real-time Rendering:** Three.js renders the shader using WebGL
 3. **Screenshot Capture:** Direct canvas capture creates screenshots every 0.3 seconds for 3 seconds
 4. **AI Evaluation:** OpenAI Vision API analyzes screenshots and provides scoring (0-100) with feedback
@@ -103,7 +103,7 @@ An AI-powered shader generator that creates, evaluates, and improves GLSL shader
 - **Next.js 15** - React framework with App Router
 - **TypeScript** - Type safety and better DX
 - **Three.js & React Three Fiber** - WebGL 3D rendering
-- **OpenAI GPT-4.1** - AI generation and evaluation
+- **OpenAI o3** - AI generation and evaluation
 - **SQLite & Better-SQLite3** - Local data persistence
 - **Tailwind CSS** - Utility-first styling
 - **React Three Drei** - Three.js helpers and controls

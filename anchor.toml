@@ -1,0 +1,10 @@
+[lcl-host]
+realm-apid = 'localhost'
+
+[org]
+apid = 'a-kuz'
+
+[service]
+apid = 'shader-maker'
+category = 'javascript'
+cert-style = 'acme'

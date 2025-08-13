@@ -14,6 +14,7 @@
     "@react-three/fiber": "^9.1.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/uuid": "^10.0.0",
+    "anchor-pki": "^0.3.2",
     "better-sqlite3": "^11.10.0",
     "next": "15.3.4",
     "openai": "^5.6.0",

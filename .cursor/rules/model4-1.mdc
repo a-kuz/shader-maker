@@ -3,4 +3,4 @@ description:
 globs: 
 alwaysApply: true
 ---
-gpt-4.1 and gpt-4.1-mini - newest openai models
+o3 and o3-mini - newest openai models

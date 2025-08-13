@@ -320,20 +320,79 @@ export function getProcess(id: string): ShaderProcess | null {
   };
 }
 
-export function getAllProcesses(): ShaderProcess[] {
+export function getAllProcesses(options?: {
+  page?: number;
+  limit?: number;
+  includeSteps?: boolean;
+}): { processes: ShaderProcess[], total: number } {
   const db = getDB();
   
+  // Get total count
+  const countStmt = db.prepare(`SELECT COUNT(*) as count FROM shader_processes`);
+  const total = countStmt.get().count;
+  
+  // Prepare pagination
+  const page = options?.page || 1;
+  const limit = options?.limit || 20;
+  const offset = (page - 1) * limit;
+  const includeSteps = options?.includeSteps ?? false;
+  
   const stmt = db.prepare(`
-    SELECT * FROM shader_processes ORDER BY created_at DESC
+    SELECT * FROM shader_processes 
+    ORDER BY created_at DESC 
+    LIMIT ? OFFSET ?
   `);
   
-  const rows = stmt.all();
+  const rows = stmt.all(limit, offset);
   
-  return rows.map(row => {
-    const stepsStmt = db.prepare(`
-      SELECT * FROM process_steps WHERE process_id = ? ORDER BY started_at
-    `);
-    const stepRows = stepsStmt.all(row.id);
+  const processes = rows.map(row => {
+    let steps: any[] = [];
+    let previewScreenshots: string[] | undefined = undefined;
+    
+    if (includeSteps) {
+      const stepsStmt = db.prepare(`
+        SELECT id, process_id, type, status, started_at, completed_at, duration, error
+        FROM process_steps 
+        WHERE process_id = ? 
+        ORDER BY started_at
+      `);
+      const stepRows = stepsStmt.all(row.id);
+      
+      steps = stepRows.map(stepRow => ({
+        id: stepRow.id,
+        processId: stepRow.process_id,
+        type: stepRow.type as ProcessStepType,
+        status: stepRow.status as ProcessStatus,
+        startedAt: new Date(stepRow.started_at),
+        completedAt: stepRow.completed_at ? new Date(stepRow.completed_at) : undefined,
+        duration: stepRow.duration,
+        error: stepRow.error,
+        // Exclude large fields (input, output, aiInteraction) for list view
+      }));
+
+      const captureStepsStmt = db.prepare(`
+        SELECT output
+        FROM process_steps 
+        WHERE process_id = ? AND type = 'capture' AND status = 'completed'
+        ORDER BY started_at DESC
+        LIMIT 3
+      `);
+      const captureRows = captureStepsStmt.all(row.id) as { output: string | null }[];
+      const allShots: string[] = [];
+      for (const r of captureRows) {
+        if (!r.output) continue;
+        try {
+          const parsed = JSON.parse(r.output);
+          const shots = Array.isArray(parsed) ? parsed : parsed?.screenshots || [];
+          if (Array.isArray(shots)) {
+            allShots.push(...shots);
+          }
+        } catch {}
+      }
+      if (allShots.length > 0) {
+        previewScreenshots = allShots.slice(-2);
+      }
+    }
     
     return {
       id: row.id,
@@ -342,24 +401,15 @@ export function getAllProcesses(): ShaderProcess[] {
       currentStep: row.current_step as ProcessStepType,
       config: JSON.parse(row.config),
       result: row.result ? JSON.parse(row.result) : undefined,
-      steps: stepRows.map(stepRow => ({
-        id: stepRow.id,
-        processId: stepRow.process_id,
-        type: stepRow.type as ProcessStepType,
-        status: stepRow.status as ProcessStatus,
-        input: stepRow.input ? JSON.parse(stepRow.input) : undefined,
-        output: stepRow.output ? JSON.parse(stepRow.output) : undefined,
-        error: stepRow.error,
-        aiInteraction: stepRow.ai_interaction ? JSON.parse(stepRow.ai_interaction) : undefined,
-        startedAt: new Date(stepRow.started_at),
-        completedAt: stepRow.completed_at ? new Date(stepRow.completed_at) : undefined,
-        duration: stepRow.duration
-      })),
+      steps,
+      previewScreenshots,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
       completedAt: row.completed_at ? new Date(row.completed_at) : undefined
     };
   });
+  
+  return { processes, total };
 }
 
 export function createProcessStep(step: Omit<ProcessStep, 'startedAt'>): ProcessStep {

@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 import { AIInteraction } from './types';
+import { buildEnhancedPrompt } from './shaderPrompts';
+import { buildEvaluationPrompt, buildImprovementPrompt, parseEvaluationResponse, DetailedShaderEvaluation } from './shaderEvaluation';
 
 // Initialize the OpenAI client
 export const openai = new OpenAI({
@@ -24,7 +26,7 @@ function createAIInteraction(
   prompt: string,
   response: string,
   startTime: number,
-  model: string = 'gpt-4.1',
+  model: string = 'o3',
   tokenUsage?: AIInteraction['tokenUsage']
 ): AIInteraction {
   return {
@@ -40,21 +42,17 @@ function createAIInteraction(
 }
 
 // Generate a shader based on a prompt
-export async function generateShader(prompt: string): Promise<{ code: string; aiInteraction: AIInteraction }> {
+export async function generateShader(prompt: string): Promise<{ code: string; aiInteraction: AIInteraction; category: string; style: string }> {
   const startTime = Date.now();
   
   try {
-    const systemPrompt = `You are a brain of the best shader programming tool in the world. 
-    Create a GLSL shader in the style of ShaderToy. 
-          The shader should be visually interesting and match user prompt.
-          Return ONLY the complete shader code with no explanations or markdown formatting.
-          The shader should be compatible with ShaderToy, using mainImage(out vec4 fragColor, in vec2 fragCoord) function.
-          Please, do not declare any uniform variables (like iTime, iResolution, etc.) - they are already available in ShaderToy.`;
+    // Use enhanced prompt system for better shader generation
+    const { systemPrompt, enhancedUserPrompt, category, style } = buildEnhancedPrompt(prompt);
     
-    const fullPrompt = `System: ${systemPrompt}\n\nUser: ${prompt}`;
+    const fullPrompt = `System: ${systemPrompt}\n\nUser: ${enhancedUserPrompt}`;
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "o3",
       messages: [
         {
           role: "system",
@@ -62,10 +60,10 @@ export async function generateShader(prompt: string): Promise<{ code: string; ai
         },
         {
           role: "user",
-          content: prompt
+          content: enhancedUserPrompt
         }
       ],
-      temperature: 0.0 + Math.round(Math.random()/2*10) / 10,
+      // temperature: Math.round(Math.random()*7) / 10,
     });
 
     const rawCode = response.choices[0]?.message?.content || "";
@@ -81,7 +79,7 @@ export async function generateShader(prompt: string): Promise<{ code: string; ai
       fullPrompt,
       rawCode,
       startTime,
-      'gpt-4.1',
+      'o3',
       response.usage ? {
         promptTokens: response.usage.prompt_tokens,
         completionTokens: response.usage.completion_tokens,
@@ -89,7 +87,7 @@ export async function generateShader(prompt: string): Promise<{ code: string; ai
       } : undefined
     );
 
-    return { code, aiInteraction };
+    return { code, aiInteraction, category, style };
   } catch (error) {
     console.error("Error generating shader:", error);
     
@@ -109,32 +107,29 @@ export async function generateShader(prompt: string): Promise<{ code: string; ai
 export async function evaluateShader(
   prompt: string, 
   shaderCode: string, 
-  screenshots: string[]
-): Promise<{ score: number; feedback: string; aiInteraction: AIInteraction }> {
+  screenshots: string[],
+  category: string = 'abstract',
+  style: string = 'vibrant'
+): Promise<{ score: number; feedback: string; aiInteraction: AIInteraction; detailedEvaluation: DetailedShaderEvaluation }> {
   const startTime = Date.now();
   
   try {
     const screenshotsBase64 = screenshots.slice(0, 5); // Limit to first 5 screenshots to keep request size manageable
     
-    const systemPrompt = `You are a shader evaluation expert. Evaluate how well the provided shader matches the user's prompt.
-          Analyze the screenshots of the shader in action and the shader code itself.
-          Provide a score from 0-100 and detailed feedback on how the shader could be improved to better match the prompt.
-          Что могло бы помочь лучше понять проблемы шейдера на ваш взгляд?`;
+    const enhancedPrompt = buildEvaluationPrompt(prompt, shaderCode, screenshots, category, style);
     
     // Create timestamped description of screenshots
     const timestampInfo = screenshotsBase64.map((_, index) => 
       `Screenshot ${index + 1}: iTime = ${TIME_VALUES[index] || 'unknown'}s`
     ).join('\n');
     
-    const userPrompt = `Prompt: ${prompt}\n\nShader Code:\n\`\`\`glsl\n${shaderCode}\n\`\`\`\n\nScreenshots with timestamps:\n${timestampInfo}\n\nPlease evaluate how well this shader matches my prompt. Consider the animation progression across the different time values.`;
-    
-    const fullPrompt = `System: ${systemPrompt}\n\nUser: ${userPrompt}\n\nScreenshots: ${screenshotsBase64.length} images provided with timestamps`;
+    const fullPrompt = `${enhancedPrompt}\n\nScreenshots with timestamps:\n${timestampInfo}\n\nScreenshots: ${screenshotsBase64.length} images provided with timestamps`;
     
     // Prepare content array with text and images
     const contentArray: any[] = [
       {
         type: "text",
-        text: userPrompt
+        text: enhancedPrompt + `\n\nScreenshots with timestamps:\n${timestampInfo}`
       }
     ];
 
@@ -154,35 +149,27 @@ export async function evaluateShader(
     });
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "o3",
       messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
         {
           role: "user",
           content: contentArray
         }
       ],
-      temperature: 0.2,
-      max_tokens: 2000,
+      // max_tokens: 2000,
     });
 
     const content = response.choices[0]?.message?.content || "";
     
-    // Extract score and feedback
-    const scoreMatch = content.match(/(\d+)\/100|score:?\s*(\d+)/i);
-    const score = scoreMatch 
-      ? parseInt(scoreMatch[1] || scoreMatch[2]) 
-      : 50;
+    // Parse detailed evaluation
+    const detailedEvaluation = parseEvaluationResponse(content);
     
     const aiInteraction = createAIInteraction(
       'evaluation',
       fullPrompt,
       content,
       startTime,
-      'gpt-4.1',
+      'o3',
       response.usage ? {
         promptTokens: response.usage.prompt_tokens,
         completionTokens: response.usage.completion_tokens,
@@ -191,9 +178,10 @@ export async function evaluateShader(
     );
     
     return {
-      score,
-      feedback: content,
-      aiInteraction
+      score: detailedEvaluation.overallScore,
+      feedback: detailedEvaluation.feedback,
+      aiInteraction,
+      detailedEvaluation
     };
   } catch (error) {
     console.error("Error evaluating shader:", error);
@@ -205,10 +193,21 @@ export async function evaluateShader(
       startTime
     );
     
+    const fallbackEvaluation: DetailedShaderEvaluation = {
+      overallScore: 0,
+      criteria: { visualAppeal: 0, technicalQuality: 0, promptAlignment: 0, creativity: 0 },
+      feedback: "Error evaluating shader: " + (error as Error).message,
+      suggestions: [],
+      category: 'abstract',
+      style: 'vibrant',
+      evaluatedAt: new Date()
+    };
+    
     return {
       score: 0,
       feedback: "Error evaluating shader: " + (error as Error).message,
-      aiInteraction
+      aiInteraction,
+      detailedEvaluation: fallbackEvaluation
     };
   }
 }
@@ -218,32 +217,45 @@ export async function improveShader(
   prompt: string, 
   originalShader: string, 
   feedback: string, 
-  screenshots: string[]
+  screenshots: string[],
+  detailedEvaluation?: DetailedShaderEvaluation,
+  category: string = 'abstract',
+  style: string = 'vibrant'
 ): Promise<{ code: string; aiInteraction: AIInteraction }> {
   const startTime = Date.now();
   
   try {
     const screenshotsBase64 = screenshots.slice(0, 3);
     
-    const systemPrompt = `You are a shader programming expert. Improve the provided GLSL shader based on the feedback and screenshots.
-          Return ONLY the complete improved shader code with no explanations or markdown formatting.
-          The shader should be compatible with ShaderToy, using mainImage(out vec4 fragColor, in vec2 fragCoord) function.
-          DO NOT declare any uniform variables (like iTime, iResolution, etc.) - they are already available in ShaderToy.`;
+    // Use enhanced improvement prompt if detailed evaluation is available
+    const improvementPrompt = detailedEvaluation 
+      ? buildImprovementPrompt(prompt, originalShader, detailedEvaluation, category, style)
+      : `Improve this GLSL shader based on the feedback:
+
+Original prompt: ${prompt}
+Feedback: ${feedback}
+
+Original shader code:
+\`\`\`glsl
+${originalShader}
+\`\`\`
+
+Return ONLY the complete improved shader code with no explanations or markdown formatting.
+Use mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.
+Do not declare uniform variables - they are already available.`;
     
     // Create timestamped description of screenshots
     const timestampInfo = screenshotsBase64.map((_, index) => 
       `Screenshot ${index + 1}: iTime = ${TIME_VALUES[index] || 'unknown'}s`
     ).join('\n');
     
-    const userPrompt = `Original prompt: ${prompt}\n\nOriginal shader code:\n\`\`\`glsl\n${originalShader}\n\`\`\`\n\nFeedback: ${feedback}\n\nScreenshots with timestamps:\n${timestampInfo}\n\nPlease improve this shader to better match the prompt. Consider how the animation should progress across the different time values.`;
-    
-    const fullPrompt = `System: ${systemPrompt}\n\nUser: ${userPrompt}\n\nScreenshots: ${screenshotsBase64.length} images provided with timestamps`;
+    const fullPrompt = `${improvementPrompt}\n\nScreenshots with timestamps:\n${timestampInfo}\n\nScreenshots: ${screenshotsBase64.length} images provided with timestamps`;
     
     // Prepare content array with text and images
     const contentArray: any[] = [
       {
         type: "text",
-        text: userPrompt
+        text: improvementPrompt + `\n\nScreenshots with timestamps:\n${timestampInfo}`
       }
     ];
 
@@ -263,18 +275,15 @@ export async function improveShader(
     });
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "o3",
       messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
         {
           role: "user",
           content: contentArray
         }
       ],
-      temperature: 0.7,
+      // temperature: 0.7,
+      max_completion_tokens: 8000
     });
 
     const rawCode = response.choices[0]?.message?.content || "";
@@ -290,7 +299,7 @@ export async function improveShader(
       fullPrompt,
       rawCode,
       startTime,
-      'gpt-4.1',
+      'o3',
       response.usage ? {
         promptTokens: response.usage.prompt_tokens,
         completionTokens: response.usage.completion_tokens,
@@ -349,7 +358,7 @@ Please fix the compilation errors while maintaining the shader's intended functi
     const fullPrompt = `System: ${systemPrompt}\n\nUser: ${userPrompt}`;
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "o3",
       messages: [
         {
           role: "system",
@@ -360,7 +369,7 @@ Please fix the compilation errors while maintaining the shader's intended functi
           content: userPrompt
         }
       ],
-      temperature: 0.1,
+      // temperature: 0.1,
     });
 
     const rawCode = response.choices[0]?.message?.content || "";
@@ -376,7 +385,7 @@ Please fix the compilation errors while maintaining the shader's intended functi
       fullPrompt,
       rawCode,
       startTime,
-      'gpt-4.1',
+      'o3',
       response.usage ? {
         promptTokens: response.usage.prompt_tokens,
         completionTokens: response.usage.completion_tokens,

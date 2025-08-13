@@ -1,0 +1,27 @@
+onlyBuiltDependencies:
+  - ','
+  - '-'
+  - '@tailwindcss/oxide'
+  - a
+  - b
+  - better-sqlite3
+  - c
+  - d
+  - e
+  - h
+  - i
+  - j
+  - k
+  - l
+  - o
+  - p
+  - puppeteer
+  - r
+  - s
+  - sharp
+  - t
+  - u
+  - unrs-resolver
+  - v
+  - w
+  - y

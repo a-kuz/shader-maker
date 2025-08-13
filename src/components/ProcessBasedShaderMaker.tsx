@@ -18,7 +18,7 @@ export default function ProcessBasedShaderMaker() {
     maxIterations: 3,
     targetScore: 80,
     autoMode: true,
-    serverCapture: true  // Включаем по умолчанию для тестирования
+    serverCapture: true  // Всегда включен - серверный capture по умолчанию
   });
 
   const {
@@ -308,16 +308,9 @@ export default function ProcessBasedShaderMaker() {
           </div>
 
           <div className="flex items-center gap-2 text-sm">
-            <label className="text-gray-300">
-              <input
-                type="checkbox"
-                checked={config.serverCapture}
-                onChange={(e) => setConfig(prev => ({ ...prev, serverCapture: e.target.checked }))}
-                className="mr-1"
-                disabled={isProcessRunning}
-              />
-              Server Capture
-            </label>
+            <span className="text-green-400 text-xs">
+              🖥️ Server Capture: Always Enabled
+            </span>
           </div>
         </div>
         

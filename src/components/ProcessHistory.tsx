@@ -23,7 +23,7 @@ export default function ProcessHistory({
   const fetchProcesses = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/processes');
+      const response = await fetch('/api/processes?limit=50&includeSteps=true');
       if (response.ok) {
         const data = await response.json();
         setProcesses(data.processes || []);

@@ -16,7 +16,7 @@ export default function ProcessesPage() {
   const fetchProcesses = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/processes');
+      const response = await fetch('/api/processes?limit=50&includeSteps=true');
       if (!response.ok) {
         throw new Error('Failed to fetch processes');
       }
@@ -66,6 +66,27 @@ export default function ProcessesPage() {
           return total;
         }
       }, 0);
+  };
+
+  const renderPreview = (process: ShaderProcess) => {
+    const shots = process.previewScreenshots || [];
+    if (shots.length === 0) return null;
+    if (shots.length === 1) {
+      return (
+        <div className="mb-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={shots[0]} alt="preview" className="w-full h-40 object-cover rounded" />
+        </div>
+      );
+    }
+    return (
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={shots[0]} alt="preview 1" className="w-full h-32 object-cover rounded" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={shots[1]} alt="preview 2" className="w-full h-32 object-cover rounded" />
+      </div>
+    );
   };
 
   if (loading) {
@@ -126,6 +147,7 @@ export default function ProcessesPage() {
                 href={`/processes/${process.id}`}
                 className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6"
               >
+                {renderPreview(process)}
                 <div className="flex justify-between items-start mb-4">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(process.status)}`}>
                     {process.status}
