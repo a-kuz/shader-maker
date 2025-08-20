@@ -16,7 +16,7 @@ export default function ProcessesPage() {
   const fetchProcesses = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/processes?limit=50&includeSteps=true');
+      const response = await fetch('/api/processes?limit=150&includeSteps=true');
       if (!response.ok) {
         throw new Error('Failed to fetch processes');
       }
@@ -51,6 +51,9 @@ export default function ProcessesPage() {
   };
 
   const getScreenshotsCount = (process: ShaderProcess) => {
+    if (process.capturesCount !== undefined) {
+      return process.capturesCount;
+    }
     return process.steps
       .filter(step => step.type === 'capture' && step.output)
       .reduce((total, step) => {
@@ -59,7 +62,6 @@ export default function ProcessesPage() {
             ? JSON.parse(step.output) 
             : step.output;
           
-          // Screenshots can be in output.screenshots or directly in output (if it's an array)
           const screenshots = output.screenshots || (Array.isArray(output) ? output : []);
           return total + (Array.isArray(screenshots) ? screenshots.length : 0);
         } catch {

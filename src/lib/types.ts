@@ -88,6 +88,8 @@ export interface ShaderProcess {
   updatedAt: Date;
   completedAt?: Date;
   previewScreenshots?: string[];
+  stepsCount?: number;
+  capturesCount?: number;
 }
 
 export interface ProcessUpdate {

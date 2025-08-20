@@ -39,4 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-tmp
+
+# temporary files and cache
+tmp/
+*.log
+.cache/
+
+# database files
+*.db
+*.sqlite
+*.sqlite3
+
+# test files
+test*.js
+test*.ts
+!src/**/*.test.ts
+!src/**/*.test.js

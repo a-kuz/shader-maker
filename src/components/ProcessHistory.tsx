@@ -23,7 +23,7 @@ export default function ProcessHistory({
   const fetchProcesses = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/processes?limit=50&includeSteps=true');
+      const response = await fetch('/api/processes?limit=150&includeSteps=true');
       if (response.ok) {
         const data = await response.json();
         setProcesses(data.processes || []);
@@ -239,7 +239,7 @@ export default function ProcessHistory({
                               </div>
                               
                               <div className="text-xs text-gray-500 space-y-1">
-                                <div>Steps: {process.steps.length}</div>
+                                <div>Steps: {process.stepsCount || process.steps.length}</div>
                                 <div>Created: {new Date(process.createdAt).toLocaleTimeString()}</div>
                                 {duration && (
                                   <div>Duration: {formatDuration(duration)}</div>

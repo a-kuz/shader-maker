@@ -23,7 +23,8 @@ export const SHADER_CATEGORIES: Record<string, ShaderCategory> = {
     The shader should be mesmerizing and aesthetically pleasing with smooth animations.
     Return ONLY the complete shader code with no explanations or markdown formatting.
     Use mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.
-    Do not declare uniform variables - they are already available.`,
+    Do not declare uniform variables - they are already available.
+    ShaderToy GLSL does not support recursion or nested functions; avoid these patterns.`,
     examples: [
       "swirling colorful vortex",
       "geometric mandala pattern",
@@ -43,7 +44,8 @@ export const SHADER_CATEGORIES: Record<string, ShaderCategory> = {
     Focus on realism and natural beauty with convincing physics simulation.
     Return ONLY the complete shader code with no explanations or markdown formatting.
     Use mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.
-    Do not declare uniform variables - they are already available.`,
+    Do not declare uniform variables - they are already available.
+    ShaderToy GLSL does not support recursion or nested functions; avoid these patterns.`,
     examples: [
       "ocean waves with foam",
       "flickering campfire flames",
@@ -63,7 +65,8 @@ export const SHADER_CATEGORIES: Record<string, ShaderCategory> = {
     Emphasize the vastness and mystery of space with dramatic lighting and effects.
     Return ONLY the complete shader code with no explanations or markdown formatting.
     Use mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.
-    Do not declare uniform variables - they are already available.`,
+    Do not declare uniform variables - they are already available.
+    ShaderToy GLSL does not support recursion or nested functions; avoid these patterns.`,
     examples: [
       "spiral galaxy with stars",
       "nebula with cosmic dust",
@@ -83,7 +86,8 @@ export const SHADER_CATEGORIES: Record<string, ShaderCategory> = {
     Focus on mathematical accuracy while maintaining visual appeal.
     Return ONLY the complete shader code with no explanations or markdown formatting.
     Use mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.
-    Do not declare uniform variables - they are already available.`,
+    Do not declare uniform variables - they are already available.
+    ShaderToy GLSL does not support recursion or nested functions; avoid these patterns.`,
     examples: [
       "mandelbrot set zoom",
       "julia set variations",
@@ -103,7 +107,8 @@ export const SHADER_CATEGORIES: Record<string, ShaderCategory> = {
     Prioritize artistic impact and emotional resonance over technical complexity.
     Return ONLY the complete shader code with no explanations or markdown formatting.
     Use mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.
-    Do not declare uniform variables - they are already available.`,
+    Do not declare uniform variables - they are already available.
+    ShaderToy GLSL does not support recursion or nested functions; avoid these patterns.`,
     examples: [
       "impressionist color blending",
       "abstract expressionist paint",

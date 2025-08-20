@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 export async function POST(request: NextRequest) {
   try {
     // Check for API key
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.OPENAI_KEY) {
       return NextResponse.json(
         { error: 'OpenAI API key is not configured' },
         { status: 500 }

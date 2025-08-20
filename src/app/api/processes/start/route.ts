@@ -4,7 +4,7 @@ import { StartProcessRequest, StartProcessResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.OPENAI_KEY) {
       return NextResponse.json(
         { error: 'OpenAI API key is not configured' },
         { status: 500 }

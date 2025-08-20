@@ -44,7 +44,7 @@ An AI-powered shader generator that creates, evaluates, and improves GLSL shader
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/shader-maker.git
+   git clone https://github.com/your-username/shader-maker.git
    cd shader-maker
    ```
 
@@ -61,7 +61,7 @@ An AI-powered shader generator that creates, evaluates, and improves GLSL shader
 
 4. **Add your OpenAI API key to `.env.local**:
    ```
-   OPENAI_API_KEY=your_api_key_here
+   OPENAI_KEY=your_api_key_here
    ```
 
 5. **Run the development server:**

@@ -17,6 +17,7 @@ let db: Database.Database;
 export function getDB() {
   if (!db) {
     db = new Database(DB_PATH);
+    try { (db as any).pragma('journal_mode = WAL'); } catch {}
     initDB();
   }
   return db;
@@ -82,6 +83,32 @@ function initDB() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (process_id) REFERENCES shader_processes (id)
     );
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_shader_processes_created_at
+    ON shader_processes (created_at)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_process_steps_process_id
+    ON process_steps (process_id)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_process_steps_pid_type_status_started
+    ON process_steps (process_id, type, status, started_at)
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_process_updates_pid_created
+    ON process_updates (process_id, created_at)
+  `);
+  
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_process_steps_type_status
+    ON process_steps (type, status)
+  `);
+  
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_process_steps_pid_type_status
+    ON process_steps (process_id, type, status)
   `);
   
   // Add migration for evaluation columns if they don't exist (legacy)
@@ -299,7 +326,7 @@ export function getProcess(id: string): ShaderProcess | null {
     prompt: processRow.prompt,
     status: processRow.status as ProcessStatus,
     currentStep: processRow.current_step as ProcessStepType,
-    config: JSON.parse(processRow.config),
+    config: processRow.config ? JSON.parse(processRow.config) : {},
     result: processRow.result ? JSON.parse(processRow.result) : undefined,
     steps: stepRows.map(row => ({
       id: row.id,
@@ -327,85 +354,150 @@ export function getAllProcesses(options?: {
 }): { processes: ShaderProcess[], total: number } {
   const db = getDB();
   
-  // Get total count
   const countStmt = db.prepare(`SELECT COUNT(*) as count FROM shader_processes`);
-  const total = countStmt.get().count;
+  const countResult = countStmt.get();
+  const total = countResult?.count || 0;
   
-  // Prepare pagination
   const page = options?.page || 1;
   const limit = options?.limit || 20;
   const offset = (page - 1) * limit;
   const includeSteps = options?.includeSteps ?? false;
   
+  if (!includeSteps) {
+    const stmt = db.prepare(`
+      SELECT * FROM shader_processes 
+      ORDER BY created_at DESC 
+      LIMIT ? OFFSET ?
+    `);
+    
+    const rows = stmt.all(limit, offset);
+    
+    const processes = rows.map(row => ({
+      id: row.id,
+      prompt: row.prompt,
+      status: row.status as ProcessStatus,
+      currentStep: row.current_step as ProcessStepType,
+      config: row.config ? JSON.parse(row.config) : {},
+      result: row.result ? JSON.parse(row.result) : undefined,
+      steps: [],
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      completedAt: row.completed_at ? new Date(row.completed_at) : undefined
+    }));
+    
+    return { processes, total };
+  }
+
   const stmt = db.prepare(`
-    SELECT * FROM shader_processes 
-    ORDER BY created_at DESC 
+    SELECT 
+      p.*,
+      COALESCE(stats.steps_count, 0) as steps_count,
+      COALESCE(stats.captures_count, 0) as captures_count,
+      latest_captures.latest_capture
+    FROM shader_processes p
+    LEFT JOIN (
+      SELECT 
+        ps.process_id,
+        COUNT(*) as steps_count,
+        COUNT(CASE WHEN ps.type = 'capture' AND ps.status = 'completed' THEN 1 END) as captures_count
+      FROM process_steps ps
+      GROUP BY ps.process_id
+    ) stats ON p.id = stats.process_id
+    LEFT JOIN (
+      SELECT DISTINCT
+        ps1.process_id,
+        ps1.output as latest_capture
+      FROM process_steps ps1
+      WHERE ps1.type = 'capture' 
+        AND ps1.status = 'completed' 
+        AND ps1.output IS NOT NULL
+        AND ps1.started_at = (
+          SELECT MAX(ps2.started_at) 
+          FROM process_steps ps2 
+          WHERE ps2.process_id = ps1.process_id 
+            AND ps2.type = 'capture' 
+            AND ps2.status = 'completed'
+            AND ps2.output IS NOT NULL
+        )
+    ) latest_captures ON p.id = latest_captures.process_id
+    ORDER BY p.created_at DESC 
     LIMIT ? OFFSET ?
   `);
   
   const rows = stmt.all(limit, offset);
   
-  const processes = rows.map(row => {
-    let steps: any[] = [];
-    let previewScreenshots: string[] | undefined = undefined;
+  const processIds = rows.map(r => r.id);
+  let screenshotsByProcessId: Map<string, string[]> = new Map();
+  
+  if (processIds.length > 0) {
+    const placeholders = processIds.map(() => '?').join(',');
+    const screenshotsQuery = `
+      SELECT 
+        process_id, 
+        output,
+        started_at
+      FROM process_steps 
+      WHERE process_id IN (${placeholders}) 
+        AND type = 'capture' 
+        AND status = 'completed' 
+        AND output IS NOT NULL
+      ORDER BY process_id, started_at DESC
+    `;
     
-    if (includeSteps) {
-      const stepsStmt = db.prepare(`
-        SELECT id, process_id, type, status, started_at, completed_at, duration, error
-        FROM process_steps 
-        WHERE process_id = ? 
-        ORDER BY started_at
-      `);
-      const stepRows = stepsStmt.all(row.id);
-      
-      steps = stepRows.map(stepRow => ({
-        id: stepRow.id,
-        processId: stepRow.process_id,
-        type: stepRow.type as ProcessStepType,
-        status: stepRow.status as ProcessStatus,
-        startedAt: new Date(stepRow.started_at),
-        completedAt: stepRow.completed_at ? new Date(stepRow.completed_at) : undefined,
-        duration: stepRow.duration,
-        error: stepRow.error,
-        // Exclude large fields (input, output, aiInteraction) for list view
-      }));
-
-      const captureStepsStmt = db.prepare(`
-        SELECT output
-        FROM process_steps 
-        WHERE process_id = ? AND type = 'capture' AND status = 'completed'
-        ORDER BY started_at DESC
-        LIMIT 3
-      `);
-      const captureRows = captureStepsStmt.all(row.id) as { output: string | null }[];
-      const allShots: string[] = [];
-      for (const r of captureRows) {
-        if (!r.output) continue;
-        try {
-          const parsed = JSON.parse(r.output);
-          const shots = Array.isArray(parsed) ? parsed : parsed?.screenshots || [];
-          if (Array.isArray(shots)) {
-            allShots.push(...shots);
-          }
-        } catch {}
+    const screenshotRows = db.prepare(screenshotsQuery).all(...processIds);
+    
+    for (const row of screenshotRows) {
+      if (!screenshotsByProcessId.has(row.process_id)) {
+        screenshotsByProcessId.set(row.process_id, []);
       }
-      if (allShots.length > 0) {
-        previewScreenshots = allShots.slice(-2);
+      
+      const existing = screenshotsByProcessId.get(row.process_id)!;
+      if (existing.length < 2 && row.output) {
+        try {
+          const parsed = JSON.parse(row.output);
+          const shots = Array.isArray(parsed) ? parsed : parsed?.screenshots || [];
+          if (Array.isArray(shots) && shots.length > 0) {
+            for (const shot of shots) {
+              if (existing.length >= 2) break;
+              if (shot && shot.startsWith('data:image/')) {
+                existing.push(shot);
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
       }
     }
+  }
+
+  const processes = rows.map(row => {
+    const previewScreenshots = screenshotsByProcessId.get(row.id) || undefined;
+    
+    const mockSteps = Array.from({ length: row.steps_count }, (_, i) => ({
+      id: `step-${i}`,
+      processId: row.id,
+      type: 'generation' as ProcessStepType,
+      status: 'completed' as ProcessStatus,
+      startedAt: new Date(row.created_at),
+      completedAt: new Date(row.updated_at),
+      duration: 1000
+    }));
     
     return {
       id: row.id,
       prompt: row.prompt,
       status: row.status as ProcessStatus,
       currentStep: row.current_step as ProcessStepType,
-      config: JSON.parse(row.config),
+      config: row.config ? JSON.parse(row.config) : {},
       result: row.result ? JSON.parse(row.result) : undefined,
-      steps,
+      steps: mockSteps,
       previewScreenshots,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
-      completedAt: row.completed_at ? new Date(row.completed_at) : undefined
+      completedAt: row.completed_at ? new Date(row.completed_at) : undefined,
+      stepsCount: row.steps_count,
+      capturesCount: row.captures_count
     };
   });
   

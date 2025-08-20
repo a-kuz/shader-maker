@@ -6,7 +6,7 @@ import { buildEvaluationPrompt, buildImprovementPrompt, parseEvaluationResponse,
 
 // Initialize the OpenAI client
 export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_KEY,
 });
 
 // Time values used for shader capture (matching serverCapture.ts)
@@ -52,7 +52,7 @@ export async function generateShader(prompt: string): Promise<{ code: string; ai
     const fullPrompt = `System: ${systemPrompt}\n\nUser: ${enhancedUserPrompt}`;
     
     const response = await openai.chat.completions.create({
-      model: "o3",
+      model: "gpt-5",
       messages: [
         {
           role: "system",
@@ -149,14 +149,14 @@ export async function evaluateShader(
     });
     
     const response = await openai.chat.completions.create({
-      model: "o3",
+      model: "gpt-5",
       messages: [
         {
           role: "user",
           content: contentArray
         }
       ],
-      // max_tokens: 2000,
+      // cursor:extension/k--kato.intellij-idea-keybindingsmax_completion_tokens: 2000,
     });
 
     const content = response.choices[0]?.message?.content || "";
@@ -228,44 +228,30 @@ export async function improveShader(
     const screenshotsBase64 = screenshots.slice(0, 3);
     
     // Use enhanced improvement prompt if detailed evaluation is available
-    const improvementPrompt = detailedEvaluation 
+    const baseImprovementPrompt = detailedEvaluation 
       ? buildImprovementPrompt(prompt, originalShader, detailedEvaluation, category, style)
-      : `Improve this GLSL shader based on the feedback:
-
-Original prompt: ${prompt}
-Feedback: ${feedback}
-
-Original shader code:
-\`\`\`glsl
-${originalShader}
-\`\`\`
-
-Return ONLY the complete improved shader code with no explanations or markdown formatting.
-Use mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.
-Do not declare uniform variables - they are already available.`;
+      : `Improve this GLSL shader based on the feedback:\n\nOriginal prompt: ${prompt}\nFeedback: ${feedback}\n\nOriginal shader code:\n\n\n\nReturn ONLY the complete improved shader code with no explanations or markdown formatting.\nUse mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.\nDo not declare uniform variables - they are already available.`;
     
     // Create timestamped description of screenshots
     const timestampInfo = screenshotsBase64.map((_, index) => 
       `Screenshot ${index + 1}: iTime = ${TIME_VALUES[index] || 'unknown'}s`
     ).join('\n');
     
-    const fullPrompt = `${improvementPrompt}\n\nScreenshots with timestamps:\n${timestampInfo}\n\nScreenshots: ${screenshotsBase64.length} images provided with timestamps`;
+    const fullPrompt = `${baseImprovementPrompt}\n\nScreenshots with timestamps:\n${timestampInfo}\n\nScreenshots: ${screenshotsBase64.length} images provided with timestamps`;
     
     // Prepare content array with text and images
     const contentArray: any[] = [
       {
         type: "text",
-        text: improvementPrompt + `\n\nScreenshots with timestamps:\n${timestampInfo}`
+        text: baseImprovementPrompt + `\n\nScreenshots with timestamps:\n${timestampInfo}`
       }
     ];
 
     // Add images in the correct format with timestamp context
     screenshotsBase64.forEach((screenshot, index) => {
-      // Check if screenshot already has data: prefix, if not add it
       const imageUrl = screenshot.startsWith('data:') 
         ? screenshot 
-        : `data:image/jpeg;base64,${screenshot}`;
-        
+        : `data:image/png;base64,${screenshot}`;
       contentArray.push({
         type: "image_url",
         image_url: {
@@ -274,20 +260,36 @@ Do not declare uniform variables - they are already available.`;
       });
     });
 
-    const response = await openai.chat.completions.create({
-      model: "o3",
-      messages: [
-        {
-          role: "user",
-          content: contentArray
-        }
-      ],
-      // temperature: 0.7,
-      max_completion_tokens: 8000
-    });
+    const systemPrompt = `You are a GLSL shader improvement expert. Return only the complete improved ShaderToy-compatible shader code. Do not include explanations or markdown. Do not declare uniforms.`;
 
-    const rawCode = response.choices[0]?.message?.content || "";
-    const code = cleanShaderCode(rawCode);
+    let rawCode = "";
+    let code = "";
+    let attempt = 0;
+    while (attempt < 2 && !code.trim()) {
+      const response = await openai.chat.completions.create({
+        model: "o3",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: contentArray }
+        ],
+        max_completion_tokens: 8000
+      });
+      rawCode = response.choices[0]?.message?.content || "";
+      code = cleanShaderCode(rawCode);
+      attempt++;
+      if (!code.trim()) {
+        const altResponse = await openai.chat.completions.create({
+          model: "o3",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: baseImprovementPrompt }
+          ],
+          max_completion_tokens: 8000
+        });
+        rawCode = altResponse.choices[0]?.message?.content || "";
+        code = cleanShaderCode(rawCode);
+      }
+    }
     
     // Validate that we actually got code
     if (!code.trim()) {
@@ -299,12 +301,7 @@ Do not declare uniform variables - they are already available.`;
       fullPrompt,
       rawCode,
       startTime,
-      'o3',
-      response.usage ? {
-        promptTokens: response.usage.prompt_tokens,
-        completionTokens: response.usage.completion_tokens,
-        totalTokens: response.usage.total_tokens
-      } : undefined
+      'o3'
     );
 
     return { code, aiInteraction };
@@ -358,7 +355,7 @@ Please fix the compilation errors while maintaining the shader's intended functi
     const fullPrompt = `System: ${systemPrompt}\n\nUser: ${userPrompt}`;
     
     const response = await openai.chat.completions.create({
-      model: "o3",
+      model: "gpt-5",
       messages: [
         {
           role: "system",

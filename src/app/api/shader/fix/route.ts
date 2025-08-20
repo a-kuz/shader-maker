@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log('Fix API endpoint called');
     
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.OPENAI_KEY) {
       return NextResponse.json(
         { error: 'OpenAI API key is not configured' },
         { status: 500 }

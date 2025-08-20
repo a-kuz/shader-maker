@@ -14,7 +14,7 @@ console.log('You will need an OpenAI API key to use this application.');
 console.log('');
 
 rl.question('Enter your OpenAI API key: ', (apiKey) => {
-  const envContent = `OPENAI_API_KEY=${apiKey.trim()}`;
+  const envContent = `OPENAI_KEY=${apiKey.trim()}`;
   const envPath = path.join(__dirname, '.env.local');
   
   fs.writeFileSync(envPath, envContent);

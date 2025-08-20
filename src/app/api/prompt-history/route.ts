@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       return NextResponse.json(entry);
     }
     
-    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const limit = parseInt(url.searchParams.get('limit') || '150');
     const history = getPromptHistory(limit);
     
     return NextResponse.json({ history });

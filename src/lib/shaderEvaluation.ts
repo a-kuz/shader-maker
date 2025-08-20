@@ -104,6 +104,7 @@ IMPROVEMENT GUIDELINES:
 - Preserve any successful elements from the current version
 - Make targeted improvements rather than complete rewrites
 - Ensure compatibility with ShaderToy format
+ - Avoid recursion and nested functions; ShaderToy GLSL does not support them
 
 Current Shader Code:
 \`\`\`glsl
@@ -112,7 +113,8 @@ ${currentCode}
 
 Return ONLY the improved shader code with no explanations or markdown formatting.
 Use mainImage(out vec4 fragColor, in vec2 fragCoord) function compatible with ShaderToy.
-Do not declare uniform variables - they are already available.`;
+Do not declare uniform variables - they are already available.
+Avoid recursion and nested functions; ShaderToy GLSL does not support them.`;
 }
 
 export function parseEvaluationResponse(response: string): DetailedShaderEvaluation {
