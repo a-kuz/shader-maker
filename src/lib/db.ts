@@ -1,15 +1,16 @@
 import Database from 'better-sqlite3';
 import { join } from 'path';
+import { homedir } from 'os';
 import fs from 'fs';
 import { ShaderProcess, ProcessStep, ProcessUpdate, ProcessStatus, ProcessStepType } from './types';
 
-// Ensure the data directory exists
-const DATA_DIR = join(process.cwd(), 'data');
+// Store data in user's home directory to prevent dev server restarts
+const DATA_DIR = join(homedir(), '.shader-maker');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const DB_PATH = join(DATA_DIR, '../../shader-history.db');
+const DB_PATH = join(DATA_DIR, 'shader-history.db');
 
 // Initialize database
 let db: Database.Database;

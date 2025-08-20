@@ -55,3 +55,5 @@ test*.js
 test*.ts
 !src/**/*.test.ts
 !src/**/*.test.js
+.vscode
+.cursor/rules/model4-1.mdc
