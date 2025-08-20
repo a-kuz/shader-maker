@@ -31,14 +31,14 @@ export default function ProcessPage() {
       const response = await fetch(`/api/processes/${processId}`);
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error('Процесс не найден');
+          throw new Error('Process not found');
         }
-        throw new Error('Не удалось загрузить процесс');
+        throw new Error('Failed to load process');
       }
       const data = await response.json();
       setProcess(data.process);
       
-      // Автоматически выбрать последний шаг с результатом
+      // Automatically select the last step with result
       const stepsWithOutput = data.process.steps.filter((step: ProcessStep) => 
         step.output && (step.type === 'generation' || step.type === 'improvement' || step.type === 'fix')
       );
@@ -46,7 +46,7 @@ export default function ProcessPage() {
         setSelectedStep(stepsWithOutput[stepsWithOutput.length - 1]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Неизвестная ошибка');
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -76,7 +76,7 @@ export default function ProcessPage() {
   };
 
   const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleString('ru-RU', {
+    return new Date(date).toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -142,7 +142,7 @@ export default function ProcessPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка процесса...</p>
+          <p className="text-gray-600">Loading process...</p>
         </div>
       </div>
     );
@@ -152,12 +152,12 @@ export default function ProcessPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Ошибка: {error}</p>
+          <p className="text-red-600 mb-4">Error: {error}</p>
           <Link
             href="/processes"
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Вернуться к списку процессов
+            Back to Process List
           </Link>
         </div>
       </div>
@@ -168,12 +168,12 @@ export default function ProcessPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Процесс не найден</p>
+          <p className="text-gray-600 mb-4">Process not found</p>
           <Link
             href="/processes"
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Вернуться к списку процессов
+            Back to Process List
           </Link>
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function ProcessPage() {
               href="/processes"
               className="text-blue-600 hover:text-blue-800 mb-2 inline-flex items-center"
             >
-              ← Все процессы
+              ← All Processes
             </Link>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {process.prompt}
@@ -201,7 +201,7 @@ export default function ProcessPage() {
               </span>
               <span className="text-gray-500">ID: {process.id}</span>
               <span className="text-gray-500">
-                Создан: {formatDate(process.createdAt)}
+                Created: {formatDate(process.createdAt)}
               </span>
             </div>
           </div>
@@ -209,14 +209,14 @@ export default function ProcessPage() {
             href="/"
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
-            Создать новый процесс
+            Create New Process
           </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Timeline and Steps */}
           <div className="lg:col-span-1">
-            <h2 className="text-xl font-semibold mb-4">Шаги процесса</h2>
+            <h2 className="text-xl font-semibold mb-4">Process Steps</h2>
             <div className="space-y-3">
                                     {process.steps.map((step) => (
                 <div
@@ -242,7 +242,7 @@ export default function ProcessPage() {
                   </div>
                   {step.type === 'capture' && (
                     <div className="text-sm text-gray-500 mt-1">
-                      Скриншотов: {getStepScreenshots(step).length}
+                      Screenshots: {getStepScreenshots(step).length}
                     </div>
                   )}
                 </div>
@@ -252,12 +252,12 @@ export default function ProcessPage() {
             {/* Process Summary */}
             {process.result && (
               <div className="mt-6 p-4 bg-white rounded-lg border">
-                <h3 className="font-semibold mb-2">Результат</h3>
+                <h3 className="font-semibold mb-2">Result</h3>
                 <div className="space-y-1 text-sm">
-                  <div>Итерации: {process.result.totalIterations}</div>
-                  <div>Финальный счет: {process.result.finalScore}</div>
+                  <div>Iterations: {process.result.totalIterations}</div>
+                  <div>Final Score: {process.result.finalScore}</div>
                   <div>
-                    Общее время: {Math.round(process.result.totalDuration / 1000)}с
+                    Total Time: {Math.round(process.result.totalDuration / 1000)}s
                   </div>
                 </div>
               </div>
@@ -271,7 +271,7 @@ export default function ProcessPage() {
                 {/* Shader Canvas */}
                 {(selectedStep.type === 'generation' || selectedStep.type === 'improvement' || selectedStep.type === 'fix') && selectedStep.output && (
                   <div className="bg-white rounded-lg p-6">
-                    <h3 className="text-lg font-semibold mb-4">Предварительный просмотр шейдера</h3>
+                    <h3 className="text-lg font-semibold mb-4">Shader Preview</h3>
                                          <div className="w-full h-96 border rounded">
                        <ShaderCanvas 
                          shaderCode={getCurrentCode()}
@@ -288,7 +288,7 @@ export default function ProcessPage() {
                 {selectedStep.type === 'capture' && (
                   <div className="bg-white rounded-lg p-6">
                     <h3 className="text-lg font-semibold mb-4">
-                      Скриншоты ({getStepScreenshots(selectedStep).length})
+                      Screenshots ({getStepScreenshots(selectedStep).length})
                     </h3>
                     
                     {/* Debug info */}
@@ -320,7 +320,7 @@ export default function ProcessPage() {
                       </div>
                     ) : (
                       <div className="text-gray-500 text-center py-8">
-                        Нет доступных скриншотов для этого шага
+                        No screenshots available for this step
                       </div>
                     )}
                   </div>
@@ -329,7 +329,7 @@ export default function ProcessPage() {
                 {/* Code */}
                 {(selectedStep.type === 'generation' || selectedStep.type === 'improvement' || selectedStep.type === 'fix') && selectedStep.output && (
                   <div className="bg-white rounded-lg p-6">
-                    <h3 className="text-lg font-semibold mb-4">Код шейдера</h3>
+                    <h3 className="text-lg font-semibold mb-4">Shader Code</h3>
                     <pre className="bg-gray-900 text-green-400 p-4 rounded overflow-auto text-sm">
                       <code>{getCurrentCode()}</code>
                     </pre>
@@ -341,16 +341,16 @@ export default function ProcessPage() {
                   const aiInteraction = getAIInteraction(selectedStep);
                   return aiInteraction && (
                     <div className="bg-white rounded-lg p-6">
-                      <h3 className="text-lg font-semibold mb-4">AI Взаимодействие</h3>
+                      <h3 className="text-lg font-semibold mb-4">AI Interaction</h3>
                       <div className="space-y-4">
                         <div>
-                          <h4 className="font-medium text-gray-700 mb-2">Промпт:</h4>
+                          <h4 className="font-medium text-gray-700 mb-2">Prompt:</h4>
                           <div className="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">
                             {aiInteraction.prompt}
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-700 mb-2">Ответ:</h4>
+                          <h4 className="font-medium text-gray-700 mb-2">Response:</h4>
                           <div className="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">
                             {aiInteraction.response}
                           </div>
@@ -363,7 +363,7 @@ export default function ProcessPage() {
                 {/* Error */}
                 {selectedStep.error && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-red-800 mb-4">Ошибка</h3>
+                    <h3 className="text-lg font-semibold text-red-800 mb-4">Error</h3>
                     <pre className="text-red-700 text-sm whitespace-pre-wrap">
                       {selectedStep.error}
                     </pre>
@@ -374,7 +374,7 @@ export default function ProcessPage() {
 
             {!selectedStep && (
               <div className="bg-white rounded-lg p-8 text-center">
-                <p className="text-gray-500">Выберите шаг для просмотра деталей</p>
+                <p className="text-gray-500">Select a step to view details</p>
               </div>
             )}
           </div>
@@ -383,7 +383,7 @@ export default function ProcessPage() {
         {/* All Screenshots Gallery */}
         {getAllScreenshots().length > 0 && (
           <div className="mt-8 bg-white rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Все скриншоты процесса</h2>
+            <h2 className="text-xl font-semibold mb-4">All Process Screenshots</h2>
             <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-4">
               {getAllScreenshots().map((screenshot, index) => (
                 <div

@@ -18,7 +18,7 @@ export default function ProcessBasedShaderMaker() {
     maxIterations: 3,
     targetScore: 80,
     autoMode: true,
-    serverCapture: true  // Всегда включен - серверный capture по умолчанию
+    serverCapture: true  // Always enabled - server capture by default
   });
 
   const {
@@ -251,7 +251,7 @@ export default function ProcessBasedShaderMaker() {
             href="/processes"
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
-            Все процессы
+            All Processes
           </Link>
         </div>
         

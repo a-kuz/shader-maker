@@ -41,7 +41,7 @@ export default function ProcessesPage() {
   };
 
   const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleString('ru-RU', {
+    return new Date(date).toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -96,7 +96,7 @@ export default function ProcessesPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка процессов...</p>
+          <p className="text-gray-600">Loading processes...</p>
         </div>
       </div>
     );
@@ -106,12 +106,12 @@ export default function ProcessesPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Ошибка: {error}</p>
+          <p className="text-red-600 mb-4">Error: {error}</p>
           <button
             onClick={fetchProcesses}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Попробовать снова
+            Try Again
           </button>
         </div>
       </div>
@@ -122,23 +122,23 @@ export default function ProcessesPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Все процессы</h1>
+          <h1 className="text-3xl font-bold text-gray-900">All Processes</h1>
           <Link
             href="/"
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
-            Создать новый процесс
+            Create New Process
           </Link>
         </div>
 
         {processes.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg mb-4">Нет созданных процессов</p>
+            <p className="text-gray-500 text-lg mb-4">No processes created</p>
             <Link
               href="/"
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Создать первый процесс
+              Create First Process
             </Link>
           </div>
         ) : (
@@ -164,14 +164,14 @@ export default function ProcessesPage() {
                 </h3>
 
                 <div className="flex justify-between text-sm text-gray-600 mb-4">
-                  <span>Шагов: {process.steps.length}</span>
-                  <span>Скриншотов: {getScreenshotsCount(process)}</span>
+                  <span>Steps: {process.steps.length}</span>
+                  <span>Screenshots: {getScreenshotsCount(process)}</span>
                 </div>
 
                 {process.result && (
                   <div className="text-sm text-gray-600 mb-2">
-                    <div>Итераций: {process.result.totalIterations}</div>
-                    <div>Финальный счет: {process.result.finalScore}</div>
+                    <div>Iterations: {process.result.totalIterations}</div>
+                    <div>Final Score: {process.result.finalScore}</div>
                   </div>
                 )}
 

@@ -19,15 +19,15 @@ export class ServerShaderCapture {
   static async initBrowser(): Promise<Browser> {
     if (!this.browser) {
       this.browser = await puppeteer.launch({
-        headless: false,  // Включаем визуальный режим для WebGL
-        devtools: true,   // Открываем DevTools автоматически
-        slowMo: 500,      // Задержка между действиями
+        headless: false,  // Enable visual mode for WebGL
+        devtools: true,   // Open DevTools automatically
+        slowMo: 500,      // Delay between actions
         args: [
           '--enable-webgl',
           '--enable-webgl2',
           '--disable-web-security',
           '--ignore-gpu-blacklist',
-          '--start-maximized'  // Открываем в полном размере
+          '--start-maximized'  // Open in full size
         ],
         timeout: 10000
       });
@@ -43,7 +43,7 @@ export class ServerShaderCapture {
   }
 
   static generateShaderHTML(shaderCode: string, options: Required<CaptureOptions>): string {
-    // Безопасно экранируем шейдерный код для JSON
+    // Safely escape shader code for JSON
     const jsonShaderCode = JSON.stringify(shaderCode);
 
     return `
@@ -71,7 +71,7 @@ export class ServerShaderCapture {
     <canvas id="shader-canvas" width="${options.width}" height="${options.height}"></canvas>
     
     <script>
-        // Передаем шейдерный код через JSON для безопасности
+        // Pass shader code via JSON for safety
         window.shaderCodeData = ${jsonShaderCode};
         
         (function initShader() {
@@ -79,7 +79,7 @@ export class ServerShaderCapture {
         const canvas = document.getElementById('shader-canvas');
         console.log('Canvas element found:', canvas);
         
-                    // Пробуем WebGL 2.0 сначала, потом WebGL 1.0
+                    // Try WebGL 2.0 first, then WebGL 1.0
             let gl = canvas.getContext('webgl2', {
                 preserveDrawingBuffer: true,
                 antialias: false,
@@ -113,7 +113,7 @@ export class ServerShaderCapture {
         // Vertex shader
         let vertexShaderSource;
         if (isWebGL2) {
-            // WebGL 2.0 версия
+            // WebGL 2.0 version
             vertexShaderSource = \`#version 300 es
                 in vec4 position;
                 void main() {
@@ -121,7 +121,7 @@ export class ServerShaderCapture {
                 }
             \`;
         } else {
-            // WebGL 1.0 версия
+            // WebGL 1.0 version
             vertexShaderSource = \`
                 attribute vec4 position;
                 void main() {
@@ -130,21 +130,21 @@ export class ServerShaderCapture {
             \`;
         }
 
-        // Fragment shader (пользовательский код)
+        // Fragment shader (user code)
         let fragmentShaderSource;
         if (isWebGL2) {
-            // WebGL 2.0 поддерживает GLSL ES 3.00
+            // WebGL 2.0 supports GLSL ES 3.00
             let shaderCode = window.shaderCodeData;
             
-            // Конвертируем GLSL ES 1.00 в GLSL ES 3.00
+            // Convert GLSL ES 1.00 to GLSL ES 3.00
             if (!shaderCode.includes('#version')) {
-                // Заменяем gl_FragColor на fragColor
+                // Replace gl_FragColor with fragColor
                 shaderCode = shaderCode.replace(/gl_FragColor/g, 'fragColor');
                 
-                // Заменяем texture2D на texture
+                // Replace texture2D with texture
                 shaderCode = shaderCode.replace(/texture2D/g, 'texture');
                 
-                // Заменяем varying на in (если есть)
+                // Replace varying with in (if exists)
                 shaderCode = shaderCode.replace(/varying\\s+/g, 'in ');
                 
                 fragmentShaderSource = 
@@ -159,7 +159,7 @@ export class ServerShaderCapture {
                     '    mainImage(fragColor, fragCoord);\\n' +
                     '}';
             } else {
-                // Уже содержит версию, используем как есть
+                // Already contains version, use as is
                 fragmentShaderSource = 
                     'uniform float iTime;\\n' +
                     'uniform vec2 iResolution;\\n\\n' +
@@ -170,7 +170,7 @@ export class ServerShaderCapture {
                     '}';
             }
         } else {
-            // WebGL 1.0 использует GLSL ES 1.00
+            // WebGL 1.0 uses GLSL ES 1.00
             fragmentShaderSource = 
                 'precision mediump float;\\n' +
                 'uniform float iTime;\\n' +
@@ -211,7 +211,7 @@ export class ServerShaderCapture {
             return program;
         }
 
-        // Создаем шейдеры и программу
+        // Create shaders and program
         let program, iTimeLocation, iResolutionLocation, positionLocation, positionBuffer;
         let compilationError = null;
         
@@ -220,7 +220,7 @@ export class ServerShaderCapture {
             const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
             program = createProgram(gl, vertexShader, fragmentShader);
 
-            // Создаем геометрию полноэкранного треугольника
+            // Create fullscreen triangle geometry
             positionBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -229,12 +229,12 @@ export class ServerShaderCapture {
                 -1,  3
             ]), gl.STATIC_DRAW);
 
-            // Получаем локации uniform'ов
+            // Get uniform locations
             iTimeLocation = gl.getUniformLocation(program, 'iTime');
             iResolutionLocation = gl.getUniformLocation(program, 'iResolution');
             positionLocation = gl.getAttribLocation(program, 'position');
 
-            // Настраиваем viewport
+            // Set up viewport
             gl.viewport(0, 0, ${options.width}, ${options.height});
             
             window.shaderReady = true;
@@ -246,7 +246,7 @@ export class ServerShaderCapture {
             window.compilationError = error.message;
         }
 
-            // Функция для рендеринга с заданным временем
+            // Function for rendering with given time
             window.renderWithTime = function(time) {
                 if (!program || compilationError) {
                     return false;
@@ -255,16 +255,16 @@ export class ServerShaderCapture {
                 try {
                     gl.useProgram(program);
                     
-                    // Устанавливаем uniform'ы
+                    // Set uniforms
                     gl.uniform1f(iTimeLocation, time);
                     gl.uniform2f(iResolutionLocation, ${options.width}, ${options.height});
                     
-                    // Привязываем атрибуты
+                    // Bind attributes
                     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
                     gl.enableVertexAttribArray(positionLocation);
                     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
                     
-                    // Рендерим
+                    // Render
                     gl.drawArrays(gl.TRIANGLES, 0, 3);
                     
                     return true;
@@ -273,7 +273,7 @@ export class ServerShaderCapture {
                     return false;
                 }
             };
-        })(); // Закрываем и вызываем функцию initShader
+        })(); // Close and call initShader function
     </script>
 </body>
 </html>
@@ -291,7 +291,7 @@ export class ServerShaderCapture {
     const browser = await this.initBrowser();
     const page = await browser.newPage();
 
-    // Перехватываем console логи из браузера
+    // Intercept console logs from browser
     page.on('console', (msg) => {
       console.log(`🌐 Browser console: ${msg.text()}`);
     });
@@ -307,7 +307,7 @@ export class ServerShaderCapture {
         deviceScaleFactor: 1
       });
 
-      // Попробуем простой способ - через data URL
+      // Try simple approach - via data URL
       try {
         const html = this.generateShaderHTML(shaderCode, opts);
         console.log(`📄 Generated HTML size: ${html.length} characters`);
@@ -320,7 +320,7 @@ export class ServerShaderCapture {
       } catch (contentError) {
         console.log('⚠️ setContent failed, trying navigation approach:', contentError.message);
         
-        // Альтернативный способ - через navigate к data URL
+        // Alternative approach - via navigate to data URL
         const html = this.generateShaderHTML(shaderCode, opts);
         const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
         
@@ -331,7 +331,7 @@ export class ServerShaderCapture {
         console.log('✅ Navigation to data URL successful');
       }
 
-      // Ждем готовности шейдера (увеличенный таймаут для отладки)
+      // Wait for shader readiness (increased timeout for debugging)
       await page.waitForFunction(() => window.shaderReady !== undefined, { timeout: 120000 });
       
       const isReady = await page.evaluate(() => window.shaderReady);
@@ -342,13 +342,13 @@ export class ServerShaderCapture {
 
       console.log(`📸 Shader ready, capturing screenshots with time values: ${opts.timeValues.join(', ')}`);
 
-      // Захватываем скриншоты для каждого значения времени
+      // Capture screenshots for each time value
       const screenshots: string[] = [];
       
       for (let i = 0; i < opts.timeValues.length; i++) {
         const timeValue = opts.timeValues[i];
         
-        // Рендерим с заданным временем
+        // Render with given time
         const renderSuccess = await page.evaluate((time) => {
           return window.renderWithTime(time);
         }, timeValue);
@@ -357,7 +357,7 @@ export class ServerShaderCapture {
           throw new Error(`Failed to render frame at time ${timeValue}`);
         }
         
-        // Небольшая задержка для стабилизации рендера
+        // Small delay for render stabilization
         await new Promise(resolve => setTimeout(resolve, 100));
         
         const screenshotBuffer = await page.screenshot({
@@ -393,7 +393,7 @@ export class ServerShaderCapture {
       const screenshots = await this.captureShaderScreenshots(shaderCode, processId, options);
       return { screenshots };
     } catch (error) {
-      // Если ошибка содержит информацию о компиляции шейдера
+      // If error contains shader compilation information
       if (error.message.includes('Shader compilation failed')) {
         const compilationError = {
           message: error.message.replace('Shader compilation failed: ', ''),
@@ -408,7 +408,7 @@ export class ServerShaderCapture {
   }
 }
 
-// Экспорт утилитарных функций
+// Export utility functions
 export async function initServerCapture(): Promise<void> {
   await ServerShaderCapture.initBrowser();
 }
